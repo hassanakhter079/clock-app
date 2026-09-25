@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_calendar_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@drawable/widget_background"
+    android:gravity="center_vertical"
+    android:padding="14dp">
+
+    <!-- Left section: Clock Digits, Seconds, Live Bar & Date -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.35"
+        android:orientation="vertical"
+        android:gravity="center_vertical"
+        android:paddingRight="10dp">
+
+        <!-- Clock Digits Row -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widget_cal_hours"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="12"
+                android:textColor="#ffffff"
+                android:textSize="38sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/jetbrains_bold"
+                android:typeface="monospace"
+                android:includeFontPadding="false" />
+
+            <!-- Themed Blinking Colon -->
+            <TextView
+                android:id="@+id/widget_cal_colon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=":"
+                android:textColor="#00f0ff"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/jetbrains_bold"
+                android:typeface="monospace"
+                android:includeFontPadding="false"
+                android:layout_marginLeft="2dp"
+                android:layout_marginRight="2dp" />
+
+            <TextView
+                android:id="@+id/widget_cal_minutes"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="00"
+                android:textColor="#ffffff"
+                android:textSize="38sp"
+                android:textStyle="bold"
+                android:fontFamily="@font/jetbrains_bold"
+                android:typeface="monospace"
+                android:includeFontPadding="false" />
+
+            <LinearLayout
+                android:id="@+id/widget_cal_sec_container"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:gravity="left|center_vertical"
+                android:layout_marginLeft="6dp">
+
+                <TextView
+                    android:id="@+id/widget_cal_seconds"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="00"
+                    android:textColor="#00f0ff"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:fontFamily="@font/jetbrains_bold"
+                    android:typeface="monospace"
+                    android:includeFontPadding="false" />
+
+                <ImageView
+                    android:id="@+id/widget_cal_ampm"
+                    android:layout_width="36dp"
+                    android:layout_height="18dp"
+                    android:scaleType="fitCenter"
+                    android:layout_marginTop="2dp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <!-- Smooth Live Seconds Progress Bar -->
+        <ImageView
+            android:id="@+id/widget_live_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:scaleType="fitXY"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="6dp" />
+
+        <!-- Date line -->
+        <TextView
+            android:id="@+id/widget_cal_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SUNDAY, SEP 20, 2026"
+            android:textAllCaps="true"
+            android:textColor="#ffffff"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.04"
+            android:includeFontPadding="false" />
+    </LinearLayout>
+
+    <!-- Right section: Mini Calendar Card -->
+    <LinearLayout
+        android:id="@+id/widget_cal_card"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="0.9"
+        android:orientation="vertical"
+        android:background="@drawable/widget_card_bg"
+        android:gravity="center"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/widget_cal_month"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SEP"
+            android:textColor="#00f0ff"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
+        <TextView
+            android:id="@+id/widget_cal_day_num"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="20"
+            android:textColor="#ffffff"
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:fontFamily="monospace"
+            android:typeface="monospace"
+            android:includeFontPadding="false" />
+
+        <TextView
+            android:id="@+id/widget_cal_weekday"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SATURDAY"
+            android:textColor="#888899"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.05" />
+
+        <TextView
+            android:id="@+id/widget_cal_week_num"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="WEEK 38 • DAY 262"
+            android:textColor="#00f0ff"
+            android:textSize="8sp"
+            android:textStyle="bold"
+            android:layout_marginTop="3dp" />
+    </LinearLayout>
+</LinearLayout>

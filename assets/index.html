@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <title>AMOLED Clock</title>
+  <style>
+    @font-face {
+      font-family: 'JetBrains Mono';
+      src: url('fonts/jetbrains-bold.ttf') format('truetype');
+      font-weight: 700;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'JetBrains Mono';
+      src: url('fonts/jetbrains-regular.ttf') format('truetype');
+      font-weight: 400;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      src: url('fonts/pjs-600.woff2') format('woff2');
+      font-weight: 600;
+      font-display: swap;
+    }
+    @font-face {
+      font-family: 'Plus Jakarta Sans';
+      src: url('fonts/pjs-400.woff2') format('woff2');
+      font-weight: 400;
+      font-display: swap;
+    }
+
+    :root {
+      --bg: #000000;
+      --card-bg: rgba(12, 12, 12, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #00f0ff;
+      --accent-glow: rgba(0, 240, 255, 0.35);
+      --text-main: #ffffff;
+      --text-muted: #888888;
+      --text-dim: #383838;
+      --font-digit: 'JetBrains Mono', 'SF Mono', 'Roboto Mono', Menlo, Consolas, monospace;
+      --font-ui: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    /* AMOLED Theme Variations */
+    body[data-theme="cyan"] {
+      --accent: #00f0ff;
+      --accent-glow: rgba(0, 240, 255, 0.35);
+    }
+    body[data-theme="white"] {
+      --accent: #ffffff;
+      --accent-glow: rgba(255, 255, 255, 0.25);
+    }
+    body[data-theme="emerald"] {
+      --accent: #00ff66;
+      --accent-glow: rgba(0, 255, 102, 0.35);
+    }
+    body[data-theme="amber"] {
+      --accent: #ffaa00;
+      --accent-glow: rgba(255, 170, 0, 0.35);
+    }
+    body[data-theme="crimson"] {
+      --accent: #ff3b30;
+      --accent-glow: rgba(255, 59, 48, 0.35);
+    }
+    body[data-theme="violet"] {
+      --accent: #bf5af2;
+      --accent-glow: rgba(191, 90, 242, 0.35);
+    }
+    body[data-theme="stealth"] {
+      --accent: #8e8e93;
+      --accent-glow: rgba(142, 142, 147, 0.2);
+    }
+    body[data-theme="nightred"] {
+      --accent: #ff2d20;
+      --accent-glow: rgba(255, 45, 32, 0.45);
+      --card-bg: rgba(18, 0, 0, 0.85);
+      --card-border: rgba(255, 45, 32, 0.2);
+      --text-muted: #993333;
+    }
+    body[data-theme="gold"] {
+      --accent: #ffd700;
+      --accent-glow: rgba(255, 215, 0, 0.35);
+    }
+    body[data-theme="pink"] {
+      --accent: #ff2d7a;
+      --accent-glow: rgba(255, 45, 122, 0.35);
+    }
+
+    /* Font Style Overrides */
+    body.font-sans .digit-hours,
+    body.font-sans .digit-minutes,
+    body.font-sans .digit-seconds,
+    body.font-sans .timer-display {
+      font-family: var(--font-ui) !important;
+      letter-spacing: -0.04em;
+    }
+    body.font-condensed .digit-hours,
+    body.font-condensed .digit-minutes,
+    body.font-condensed .digit-seconds,
+    body.font-condensed .timer-display {
+      font-family: 'JetBrains Mono', monospace !important;
+      letter-spacing: -0.07em;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+    }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000000;
+      color: var(--text-main);
+      font-family: var(--font-ui);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    #app-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background-color: #000000;
+      position: relative;
+      overflow-y: auto;
+      padding: 16px;
+      transition: transform 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    /* Top Control Bar */
+    .top-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 50;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+      pointer-events: auto;
+    }
+
+    .top-bar.idle-hidden {
+      opacity: 0;
+      transform: translateY(-10px);
+      pointer-events: none;
+    }
+
+    .app-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .app-brand-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-btn {
+      background: rgba(20, 20, 20, 0.7);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+
+    .icon-btn:active {
+      transform: scale(0.92);
+      background: rgba(40, 40, 40, 0.9);
+      border-color: var(--accent);
+    }
+
+    .icon-btn.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* Main Content Wrapper */
+    .main-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      width: 100%;
+      max-width: 620px;
+      margin: auto;
+      z-index: 10;
+    }
+
+    /* Landscape Mode Adaptation (Phone / Desk Clock) */
+    @media (orientation: landscape) and (max-height: 540px) {
+      #app-container {
+        padding: 6px 16px;
+        justify-content: center;
+      }
+      .main-wrapper {
+        flex-direction: row !important;
+        max-width: 98vw !important;
+        gap: 16px !important;
+        align-items: center;
+      }
+      .clock-card {
+        flex: 1.6;
+        padding: 18px 16px !important;
+        border-radius: 22px !important;
+        justify-content: center;
+      }
+      .calendar-card {
+        flex: 0.9;
+        max-width: 290px !important;
+        padding: 10px 12px 8px !important;
+        border-radius: 18px !important;
+        justify-content: center;
+      }
+      .digit-hours, .digit-minutes {
+        font-size: clamp(48px, 12vw, 84px) !important;
+      }
+      .colon {
+        font-size: clamp(40px, 10vw, 70px) !important;
+      }
+      .digit-seconds {
+        font-size: clamp(24px, 5.5vw, 40px) !important;
+      }
+      .cal-weekday {
+        padding: 1px 0 !important;
+        font-size: 8px !important;
+      }
+      .cal-day {
+        font-size: 10px !important;
+        border-radius: 5px !important;
+      }
+      .progress-bar-wrap {
+        margin-top: 10px !important;
+        margin-bottom: 8px !important;
+      }
+      .date-row {
+        gap: 3px !important;
+      }
+      .meta-tags {
+        display: none !important;
+      }
+      .top-bar {
+        padding: 6px 14px !important;
+      }
+      .bottom-bar {
+        padding: 6px 14px !important;
+      }
+    }
+
+    /* Clock Card */
+    .clock-card {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px 24px;
+      border-radius: 28px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      position: relative;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.9);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    /* Digits Row */
+    .clock-digits-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      font-family: var(--font-digit);
+      font-feature-settings: "tnum";
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+      width: 100%;
+    }
+
+    .digit-hours, .digit-minutes {
+      font-size: clamp(68px, 18.5vw, 118px);
+      font-weight: 700;
+      color: var(--text-main);
+      letter-spacing: -0.03em;
+    }
+
+    .colon {
+      font-size: clamp(56px, 15.5vw, 98px);
+      color: var(--accent);
+      margin: 0 clamp(2px, 0.8vw, 6px);
+      font-weight: 700;
+      transition: opacity 0.15s ease;
+    }
+
+    .colon.blink {
+      opacity: 0.15;
+    }
+
+    /* Seconds & AM/PM Container */
+    .seconds-container {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      margin-left: clamp(8px, 2vw, 14px);
+      gap: 4px;
+    }
+
+    .digit-seconds {
+      font-size: clamp(32px, 8.5vw, 54px);
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.01em;
+      text-shadow: 0 0 18px var(--accent-glow);
+    }
+
+    .ampm-badge {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      padding: 3px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-muted);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      text-transform: uppercase;
+    }
+
+    .ampm-badge.highlight {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: rgba(0, 240, 255, 0.08);
+    }
+
+    /* Seconds Progress Bar */
+    .progress-bar-wrap {
+      width: 100%;
+      height: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 4px;
+      margin-top: 20px;
+      margin-bottom: 16px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      transition: width 0.25s linear;
+      border-radius: 4px;
+    }
+
+    /* Date Line */
+    .date-row {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .date-full {
+      font-size: clamp(13px, 3.2vw, 15px);
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-main);
+    }
+
+    .meta-tags {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+
+    .meta-pill {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    /* Small Compact Calendar Section (Beneath Clock) */
+    .calendar-card {
+      width: 100%;
+      max-width: 350px;
+      padding: 12px 14px 10px;
+      border-radius: 20px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+      padding: 0 2px;
+    }
+
+    .cal-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cal-month-year {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--text-main);
+      text-transform: uppercase;
+    }
+
+    .cal-today-btn {
+      background: transparent;
+      border: 1px solid var(--card-border);
+      color: var(--accent);
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2px 6px;
+      border-radius: 8px;
+      cursor: pointer;
+      display: none;
+      transition: all 0.2s ease;
+    }
+
+    .cal-today-btn.visible {
+      display: inline-block;
+    }
+
+    .cal-today-btn:active {
+      background: var(--accent);
+      color: #000;
+    }
+
+    .cal-nav-btns {
+      display: flex;
+      gap: 4px;
+    }
+
+    .cal-nav-btn {
+      background: rgba(25, 25, 25, 0.6);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.2s ease;
+    }
+
+    .cal-nav-btn:active {
+      background: rgba(45, 45, 45, 0.9);
+      border-color: var(--accent);
+    }
+
+    /* Calendar Grid */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 2px;
+      text-align: center;
+    }
+
+    .cal-weekday {
+      font-size: 9px;
+      font-weight: 700;
+      color: var(--text-muted);
+      padding: 2px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .cal-day {
+      aspect-ratio: 1 / 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-family: var(--font-digit);
+      font-feature-settings: "tnum";
+      font-weight: 500;
+      color: var(--text-main);
+      border-radius: 6px;
+      cursor: pointer;
+      position: relative;
+      transition: all 0.15s ease;
+    }
+
+    .cal-day:hover {
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .cal-day.other-month {
+      color: var(--text-dim);
+      opacity: 0.35;
+    }
+
+    .cal-day.today {
+      background: var(--accent);
+      color: #000000 !important;
+      font-weight: 700;
+      border-radius: 6px;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    .cal-day.selected:not(.today) {
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+
+    .cal-day.weekend:not(.today):not(.other-month) {
+      color: #d8d8d8;
+    }
+
+    .cal-selected-info {
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: center;
+      min-height: 18px;
+    }
+
+    .cal-selected-info span {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Bottom Quick Action Bar */
+    .bottom-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 14px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 12px;
+      z-index: 50;
+      transition: opacity 0.4s ease, transform 0.4s ease;
+      background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+      pointer-events: auto;
+    }
+
+    .bottom-bar.idle-hidden {
+      opacity: 0;
+      transform: translateY(10px);
+      pointer-events: none;
+    }
+
+    .pill-btn {
+      background: rgba(18, 18, 18, 0.85);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 7px 14px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      transition: all 0.2s ease;
+    }
+
+    .pill-btn:active {
+      transform: scale(0.95);
+      background: rgba(35, 35, 35, 0.95);
+      border-color: var(--accent);
+    }
+
+    .pill-btn.active {
+      color: var(--accent);
+      border-color: var(--accent);
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-box {
+      width: 100%;
+      max-width: 440px;
+      background: #090909;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 24px 20px 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.95);
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      max-height: 85vh;
+      overflow-y: auto;
+      transform: scale(0.94);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .modal-backdrop.open .modal-box {
+      transform: scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 12px;
+    }
+
+    .modal-title {
+      font-size: 16px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+    }
+
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .setting-group {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    }
+
+    .setting-label-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .setting-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .setting-desc {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    /* Switch toggle */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background-color: #242426;
+      transition: .25s;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #ffffff;
+      transition: .25s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-color: var(--accent);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+      background-color: #000000;
+    }
+
+    /* Theme color swatches */
+    .theme-swatches {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+
+    .swatch {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+
+    .swatch:active {
+      transform: scale(0.9);
+    }
+
+    .swatch.selected {
+      border-color: #ffffff;
+      box-shadow: 0 0 10px currentColor;
+    }
+
+    /* Brightness Slider */
+    .dimmer-slider {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #242426;
+      outline: none;
+    }
+
+    .dimmer-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* Stopwatch / Timer Modal */
+    .timer-display {
+      font-family: var(--font-digit);
+      font-size: 44px;
+      font-weight: 700;
+      color: var(--accent);
+      text-align: center;
+      margin: 16px 0;
+      letter-spacing: -0.01em;
+      text-shadow: 0 0 16px var(--accent-glow);
+    }
+
+    .timer-controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .timer-btn {
+      padding: 10px 22px;
+      border-radius: 12px;
+      background: #1a1a1a;
+      border: 1px solid var(--card-border);
+      color: #ffffff;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .timer-btn.primary {
+      background: var(--accent);
+      color: #000;
+      border: none;
+    }
+
+    /* Screen Dim Overlay for browser mode */
+    #dim-overlay {
+      position: fixed;
+      inset: 0;
+      background: #000000;
+      pointer-events: none;
+      opacity: 0;
+      z-index: 40;
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
+<body data-theme="cyan">
+  <div id="dim-overlay"></div>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-bar" id="top-bar">
+    <div class="app-brand">
+      <div class="app-brand-dot"></div>
+      <span>AMOLED CLOCK</span>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btn-wakelock" title="Keep Screen On">
+        <span id="wakelock-icon">🔆</span>
+      </button>
+      <button class="icon-btn" id="btn-dimmer" title="Night Dimmer">
+        <span>🌙</span>
+      </button>
+      <button class="icon-btn" id="btn-stopwatch" title="Stopwatch & Timer">
+        <span>⏱️</span>
+      </button>
+      <button class="icon-btn" id="btn-widget" title="Home Screen Widgets">
+        <span>⊞</span>
+      </button>
+      <button class="icon-btn" id="btn-settings" title="Settings">
+        <span>⚙️</span>
+      </button>
+      <button class="icon-btn" id="btn-fullscreen" title="Fullscreen">
+        <span>⛶</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main id="app-container">
+    <div class="main-wrapper" id="main-wrapper">
+      
+      <!-- Clock Card -->
+      <section class="clock-card" id="clock-card">
+        <div class="clock-digits-row">
+          <span class="digit-hours" id="hours">12</span>
+          <span class="colon" id="colon-1">:</span>
+          <span class="digit-minutes" id="minutes">00</span>
+          <div class="seconds-container" id="sec-container">
+            <span class="digit-seconds" id="seconds">00</span>
+            <span class="ampm-badge" id="ampm">AM</span>
+          </div>
+        </div>
+
+        <!-- Seconds Progress Fill Bar -->
+        <div class="progress-bar-wrap" id="progress-wrap">
+          <div class="progress-bar-fill" id="progress-bar"></div>
+        </div>
+
+        <!-- Date & Meta Row -->
+        <div class="date-row">
+          <div class="date-full" id="date-text">SATURDAY, SEP 19, 2026</div>
+          <div class="meta-tags">
+            <span class="meta-pill" id="week-tag">WEEK 38</span>
+            <span class="meta-pill" id="day-tag">DAY 262</span>
+            <span class="meta-pill" id="tz-tag">LOCAL</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Small Mini Calendar Card Beneath Clock -->
+      <section class="calendar-card" id="calendar-card">
+        <div class="calendar-header">
+          <div class="cal-title-wrap">
+            <span class="cal-month-year" id="cal-title">SEPTEMBER 2026</span>
+            <button class="cal-today-btn" id="cal-today-btn">TODAY</button>
+          </div>
+          <div class="cal-nav-btns">
+            <button class="cal-nav-btn" id="cal-prev" title="Previous Month">‹</button>
+            <button class="cal-nav-btn" id="cal-next" title="Next Month">›</button>
+          </div>
+        </div>
+
+        <!-- Calendar 7-col Grid -->
+        <div class="cal-grid" id="cal-grid">
+          <!-- Generated by JS -->
+        </div>
+
+        <div class="cal-selected-info" id="cal-info">
+          Tap any date for details
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <!-- Bottom Floating Quick Dock -->
+  <footer class="bottom-bar" id="bottom-bar">
+    <button class="pill-btn" id="btn-theme-quick">
+      <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--accent);"></span>
+      <span id="theme-label">Cyan</span>
+    </button>
+    <button class="pill-btn" id="btn-format-toggle">
+      <span id="format-label">24H</span>
+    </button>
+    <button class="pill-btn" id="btn-burnin-status">
+      <span>🛡️ OLED Shield</span>
+    </button>
+  </footer>
+
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="modal-settings">
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">Settings</span>
+        <button class="modal-close" id="close-settings">&times;</button>
+      </div>
+
+      <div class="setting-group">
+        <!-- AMOLED Themes -->
+        <div>
+          <div class="setting-title" style="margin-bottom:8px;">AMOLED Theme Palette</div>
+          <div class="theme-swatches">
+            <div class="swatch" data-theme="cyan" style="background:#00f0ff;" title="Cyber Cyan"></div>
+            <div class="swatch" data-theme="white" style="background:#ffffff;" title="Pure White"></div>
+            <div class="swatch" data-theme="emerald" style="background:#00ff66;" title="Emerald Matrix"></div>
+            <div class="swatch" data-theme="amber" style="background:#ffaa00;" title="Sunset Amber"></div>
+            <div class="swatch" data-theme="crimson" style="background:#ff3b30;" title="Crimson Red"></div>
+            <div class="swatch" data-theme="violet" style="background:#bf5af2;" title="Electric Violet"></div>
+            <div class="swatch" data-theme="stealth" style="background:#8e8e93;" title="Stealth Gray"></div>
+            <div class="swatch" data-theme="nightred" style="background:#ff2d20;" title="Bedside Night Red"></div>
+            <div class="swatch" data-theme="gold" style="background:#ffd700;" title="Cyber Gold"></div>
+            <div class="swatch" data-theme="pink" style="background:#ff2d7a;" title="Neon Pink"></div>
+          </div>
+        </div>
+
+        <!-- Home Screen Widgets Shortcut -->
+        <div class="setting-row" id="btn-open-widgets-from-settings" style="cursor:pointer; background:rgba(0,240,255,0.06); padding:10px 14px; border-radius:12px; border:1px solid rgba(0,240,255,0.2);">
+          <div class="setting-label-block">
+            <span class="setting-title" style="color:var(--accent);">⊞ Home Screen Widgets</span>
+            <span class="setting-desc">Add AMOLED widgets to your phone launcher</span>
+          </div>
+          <span style="font-size: 16px; color: var(--accent);">➔</span>
+        </div>
+
+        <!-- Clock Typography Selection -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">Clock Digit Font</span>
+            <span class="setting-desc">Choose typography style</span>
+          </div>
+          <select id="select-font" style="background:#141418; color:var(--accent); border:1px solid var(--card-border); border-radius:8px; padding:6px 12px; font-size:12px; outline:none; font-weight:600;">
+            <option value="mono">Mono Tech (JetBrains)</option>
+            <option value="sans">Modern Sans (Jakarta)</option>
+            <option value="condensed">Narrow Compact</option>
+          </select>
+        </div>
+
+        <!-- 24 Hour Toggle -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">24-Hour Format</span>
+            <span class="setting-desc">Toggle between 12-hour and 24-hour display</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-24h" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Show Seconds -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">Show Seconds</span>
+            <span class="setting-desc">Display seconds counter beside minutes</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-seconds" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Blinking Colon -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">Blinking Separator</span>
+            <span class="setting-desc">Flash time colon every second</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-blink" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Start Week on Monday -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">Start Week on Monday</span>
+            <span class="setting-desc">Calendar begins on Monday instead of Sunday</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-monday">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Anti-Burn-In Pixel Shift -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">OLED Burn-in Protection</span>
+            <span class="setting-desc">Subtly shifts elements by a few pixels every minute</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-burnin" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Hourly Chime -->
+        <div class="setting-row">
+          <div class="setting-label-block">
+            <span class="setting-title">Hourly Chime & Vibration</span>
+            <span class="setting-desc">Gentle tone/vibration at the top of every hour</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="toggle-chime">
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        <!-- Brightness Slider -->
+        <div class="setting-group" style="gap:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="setting-title">Night Dimmer</span>
+            <span id="dimmer-pct-text" style="font-size:12px; color:var(--accent); font-family:var(--font-digit);">100%</span>
+          </div>
+          <input type="range" class="dimmer-slider" id="slider-dimmer" min="5" max="100" value="100">
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Home Screen Widget Modal -->
+  <div class="modal-backdrop" id="modal-widgets">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-header">
+        <span class="modal-title">Home Screen Widgets</span>
+        <button class="modal-close" id="close-widgets">&times;</button>
+      </div>
+
+      <div style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px; line-height: 1.4;">
+        Add battery-efficient, live AMOLED widgets to your Android launcher screen.
+      </div>
+
+      <!-- Widget 1: Digital Clock -->
+      <div style="background: #0d0d11; border: 1px solid #23232c; border-radius: 16px; padding: 14px; margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em;">AMOLED DIGITAL CLOCK</span>
+          <span style="font-size: 10px; background: rgba(0,240,255,0.12); color: var(--accent); border: 1px solid var(--accent); padding: 1px 6px; border-radius: 4px; font-weight: 600;">4×1 • 4×2</span>
+        </div>
+        <div style="background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 20px; padding: 18px 16px 14px; margin-bottom: 12px; display: flex; flex-direction: column; align-items: center; box-shadow: 0 8px 24px rgba(0,0,0,0.8);">
+          <div style="display: flex; align-items: baseline; justify-content: center; font-family: var(--font-digit); line-height: 1; font-weight: 700;">
+            <span style="font-size: 38px; color: #ffffff;" id="widget-prev-hours-1">12</span>
+            <span style="font-size: 34px; color: var(--accent); margin: 0 2px;" id="widget-prev-colon-1">:</span>
+            <span style="font-size: 38px; color: #ffffff;" id="widget-prev-minutes-1">00</span>
+            <div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 6px; gap: 2px;" id="widget-prev-sec-wrap-1">
+              <span style="font-size: 16px; color: var(--accent); font-weight: 700; text-shadow: 0 0 10px var(--accent-glow);" id="widget-prev-seconds-1">00</span>
+              <span class="ampm-badge" style="font-size: 9px; padding: 1px 5px; border-radius: 4px;" id="widget-prev-ampm-1">AM</span>
+            </div>
+          </div>
+          <!-- Progress bar -->
+          <div style="width: 100%; height: 3px; background: rgba(255, 255, 255, 0.06); border-radius: 4px; margin-top: 10px; margin-bottom: 8px; overflow: hidden;" id="widget-prev-progress-wrap-1">
+            <div style="height: 100%; width: 0%; background: var(--accent); box-shadow: 0 0 6px var(--accent); border-radius: 4px;" id="widget-prev-bar-1"></div>
+          </div>
+          <!-- Date -->
+          <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: #ffffff; margin-bottom: 5px;" id="widget-prev-date-1">SATURDAY, SEP 19, 2026</div>
+          <!-- Meta Tags -->
+          <div style="display: flex; align-items: center; gap: 4px; font-size: 8px; color: var(--text-muted);">
+            <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 1px 6px;" id="widget-prev-week-1">WEEK 38</span>
+            <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 1px 6px;" id="widget-prev-day-1">DAY 262</span>
+            <span style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 1px 6px;" id="widget-prev-tz-1">LOCAL</span>
+          </div>
+        </div>
+        <button class="timer-btn primary" style="width: 100%; font-size: 12px; padding: 10px;" id="btn-pin-widget-digital">
+          + Add Digital Clock to Home Screen
+        </button>
+      </div>
+
+      <!-- Widget 2: Clock & Calendar Combo -->
+      <div style="background: #0d0d11; border: 1px solid #23232c; border-radius: 16px; padding: 14px; margin-bottom: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span style="font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: 0.05em;">AMOLED CLOCK &amp; CALENDAR</span>
+          <span style="font-size: 10px; background: rgba(0,240,255,0.12); color: var(--accent); border: 1px solid var(--accent); padding: 1px 6px; border-radius: 4px; font-weight: 600;">4×2 • 3×2</span>
+        </div>
+        <div style="background: #000000; border: 1px solid #1a1a24; border-radius: 12px; padding: 10px 12px; margin-bottom: 10px; display: flex; gap: 12px; align-items: center;">
+          <div style="flex: 1.2;">
+            <div style="font-size: 9px; font-weight: bold; color: var(--accent); margin-bottom: 2px;">AMOLED CLOCK</div>
+            <div style="font-size: 28px; font-weight: 700; font-family: var(--font-digit); color: #ffffff;" id="widget-prev-time-2">12:00</div>
+            <div style="font-size: 11px; color: #a0a0aa;" id="widget-prev-date-2">Saturday, Sep 19</div>
+          </div>
+          <div style="flex: 0.8; background: #131318; border: 1px solid #262633; border-radius: 10px; padding: 6px; text-align: center;">
+            <div style="font-size: 9px; font-weight: bold; color: var(--accent);" id="widget-prev-month">SEP</div>
+            <div style="font-size: 24px; font-weight: bold; color: #ffffff; line-height: 1;" id="widget-prev-day">19</div>
+            <div style="font-size: 8px; color: #888899; font-weight: bold;" id="widget-prev-weekday">SATURDAY</div>
+          </div>
+        </div>
+        <button class="timer-btn primary" style="width: 100%; font-size: 12px; padding: 10px;" id="btn-pin-widget-calendar">
+          + Add Clock &amp; Calendar to Home Screen
+        </button>
+      </div>
+
+      <div style="background: rgba(255,255,255,0.03); border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 12px; font-size: 11px; color: var(--text-muted); line-height: 1.4;">
+        <strong style="color:#fff;">How to add manually:</strong> Long-press any empty area on your phone\'s Home Screen, tap <strong>Widgets</strong>, find <strong>AMOLED Clock</strong>, and drag it to your screen!
+      </div>
+    </div>
+  </div>
+
+  <!-- Stopwatch & Timer Modal -->
+  <div class="modal-backdrop" id="modal-stopwatch">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div style="display:flex; gap:8px;">
+          <button class="pill-btn active" id="tab-sw-btn" style="border:none; font-size:12px; padding:6px 12px;">Stopwatch</button>
+          <button class="pill-btn" id="tab-timer-btn" style="border:none; background:transparent; font-size:12px; padding:6px 12px;">Countdown</button>
+        </div>
+        <button class="modal-close" id="close-stopwatch">&times;</button>
+      </div>
+      
+      <!-- Stopwatch View -->
+      <div id="sw-view">
+        <div class="timer-display" id="sw-display">00:00.00</div>
+        <div class="timer-controls">
+          <button class="timer-btn primary" id="sw-start-btn">Start</button>
+          <button class="timer-btn" id="sw-reset-btn">Reset</button>
+        </div>
+      </div>
+
+      <!-- Countdown Timer View -->
+      <div id="timer-view" style="display:none;">
+        <div class="timer-display" id="cd-display">05:00</div>
+        <div style="display:flex; gap:6px; justify-content:center; margin-bottom:14px; flex-wrap:wrap;">
+          <button class="pill-btn cd-pill" data-seconds="60">1m</button>
+          <button class="pill-btn cd-pill" data-seconds="180">3m</button>
+          <button class="pill-btn cd-pill active" data-seconds="300" style="color:var(--accent);">5m</button>
+          <button class="pill-btn cd-pill" data-seconds="600">10m</button>
+          <button class="pill-btn cd-pill" data-seconds="1500" style="color:var(--accent);">25m Focus</button>
+        </div>
+        <div class="timer-controls">
+          <button class="timer-btn primary" id="cd-start-btn">Start</button>
+          <button class="timer-btn" id="cd-reset-btn">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* =========================================================================
+       STATE MANAGEMENT & LOCAL STORAGE
+       ========================================================================= */
+    const state = {
+      is24h: localStorage.getItem('clk_24h') !== null ? localStorage.getItem('clk_24h') === 'true' : true,
+      showSeconds: localStorage.getItem('clk_sec') !== null ? localStorage.getItem('clk_sec') === 'true' : true,
+      blinkingColon: localStorage.getItem('clk_blink') !== null ? localStorage.getItem('clk_blink') === 'true' : true,
+      startMonday: localStorage.getItem('clk_monday') === 'true',
+      burnInProtection: localStorage.getItem('clk_burnin') !== null ? localStorage.getItem('clk_burnin') === 'true' : true,
+      hourlyChime: localStorage.getItem('clk_chime') === 'true',
+      theme: (window.AndroidBridge && window.AndroidBridge.getTheme) ? window.AndroidBridge.getTheme() : (localStorage.getItem('clk_theme') || 'cyan'),
+      font: localStorage.getItem('clk_font') || 'mono',
+      brightness: parseInt(localStorage.getItem('clk_brightness') || '100', 10),
+      wakeLockActive: true,
+      calYear: new Date().getFullYear(),
+      calMonth: new Date().getMonth(),
+      selectedDate: null
+    };
+
+    const THEME_NAMES = {
+      cyan: 'Cyber Cyan',
+      white: 'Pure White',
+      emerald: 'Emerald',
+      amber: 'Sunset Amber',
+      crimson: 'Crimson Red',
+      violet: 'Electric Violet',
+      stealth: 'Stealth Gray',
+      nightred: 'Bedside Night Red',
+      gold: 'Cyber Gold',
+      pink: 'Neon Pink'
+    };
+
+    const THEMES_LIST = ['cyan', 'white', 'emerald', 'amber', 'crimson', 'violet', 'stealth', 'nightred', 'gold', 'pink'];
+
+    /* =========================================================================
+       DOM ELEMENTS
+       ========================================================================= */
+    const elHours = document.getElementById('hours');
+    const elMinutes = document.getElementById('minutes');
+    const elSeconds = document.getElementById('seconds');
+    const elColon1 = document.getElementById('colon-1');
+    const elSecContainer = document.getElementById('sec-container');
+    const elAmPm = document.getElementById('ampm');
+    const elProgressBar = document.getElementById('progress-bar');
+    const elProgressWrap = document.getElementById('progress-wrap');
+    const elDateText = document.getElementById('date-text');
+    const elWeekTag = document.getElementById('week-tag');
+    const elDayTag = document.getElementById('day-tag');
+    const elTzTag = document.getElementById('tz-tag');
+
+    const elCalTitle = document.getElementById('cal-title');
+    const elCalGrid = document.getElementById('cal-grid');
+    const elCalPrev = document.getElementById('cal-prev');
+    const elCalNext = document.getElementById('cal-next');
+    const elCalTodayBtn = document.getElementById('cal-today-btn');
+    const elCalInfo = document.getElementById('cal-info');
+
+    const topBar = document.getElementById('top-bar');
+    const bottomBar = document.getElementById('bottom-bar');
+    const appContainer = document.getElementById('app-container');
+    const mainWrapper = document.getElementById('main-wrapper');
+    const dimOverlay = document.getElementById('dim-overlay');
+    const clockCard = document.getElementById('clock-card');
+
+    const btnWakeLock = document.getElementById('btn-wakelock');
+    const wakeLockIcon = document.getElementById('wakelock-icon');
+    const btnDimmer = document.getElementById('btn-dimmer');
+    const btnSettings = document.getElementById('btn-settings');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const btnStopwatch = document.getElementById('btn-stopwatch');
+    const btnWidget = document.getElementById('btn-widget');
+
+    const btnThemeQuick = document.getElementById('btn-theme-quick');
+    const themeLabel = document.getElementById('theme-label');
+    const btnFormatToggle = document.getElementById('btn-format-toggle');
+    const formatLabel = document.getElementById('format-label');
+
+    const modalSettings = document.getElementById('modal-settings');
+    const closeSettings = document.getElementById('close-settings');
+    const modalStopwatch = document.getElementById('modal-stopwatch');
+    const closeStopwatch = document.getElementById('close-stopwatch');
+    const modalWidgets = document.getElementById('modal-widgets');
+    const closeWidgets = document.getElementById('close-widgets');
+    const btnOpenWidgetsFromSettings = document.getElementById('btn-open-widgets-from-settings');
+
+    const btnPinWidgetDigital = document.getElementById('btn-pin-widget-digital');
+    const btnPinWidgetCalendar = document.getElementById('btn-pin-widget-calendar');
+    const widgetPrevHours1 = document.getElementById('widget-prev-hours-1');
+    const widgetPrevColon1 = document.getElementById('widget-prev-colon-1');
+    const widgetPrevMinutes1 = document.getElementById('widget-prev-minutes-1');
+    const widgetPrevSecWrap1 = document.getElementById('widget-prev-sec-wrap-1');
+    const widgetPrevSeconds1 = document.getElementById('widget-prev-seconds-1');
+    const widgetPrevAmPm1 = document.getElementById('widget-prev-ampm-1');
+    const widgetPrevProgressWrap1 = document.getElementById('widget-prev-progress-wrap-1');
+    const widgetPrevBar1 = document.getElementById('widget-prev-bar-1');
+    const widgetPrevDate1 = document.getElementById('widget-prev-date-1');
+    const widgetPrevWeek1 = document.getElementById('widget-prev-week-1');
+    const widgetPrevDay1 = document.getElementById('widget-prev-day-1');
+    const widgetPrevTz1 = document.getElementById('widget-prev-tz-1');
+    const widgetPrevTime2 = document.getElementById('widget-prev-time-2');
+    const widgetPrevDate2 = document.getElementById('widget-prev-date-2');
+    const widgetPrevMonth = document.getElementById('widget-prev-month');
+    const widgetPrevDay = document.getElementById('widget-prev-day');
+    const widgetPrevWeekday = document.getElementById('widget-prev-weekday');
+
+    const tabSwBtn = document.getElementById('tab-sw-btn');
+    const tabTimerBtn = document.getElementById('tab-timer-btn');
+    const swView = document.getElementById('sw-view');
+    const timerView = document.getElementById('timer-view');
+    const cdDisplay = document.getElementById('cd-display');
+    const cdStartBtn = document.getElementById('cd-start-btn');
+    const cdResetBtn = document.getElementById('cd-reset-btn');
+
+    const selectFont = document.getElementById('select-font');
+    const toggle24h = document.getElementById('toggle-24h');
+    const toggleSeconds = document.getElementById('toggle-seconds');
+    const toggleBlink = document.getElementById('toggle-blink');
+    const toggleMonday = document.getElementById('toggle-monday');
+    const toggleBurnin = document.getElementById('toggle-burnin');
+    const toggleChime = document.getElementById('toggle-chime');
+    const sliderDimmer = document.getElementById('slider-dimmer');
+    const dimmerPctText = document.getElementById('dimmer-pct-text');
+
+    /* =========================================================================
+       AUDIO CHIME (WEB AUDIO SYNTHESIZER)
+       ========================================================================= */
+    let audioCtx = null;
+    function playChime() {
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.18);
+        gain.gain.setValueAtTime(0.001, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.2, audioCtx.currentTime + 0.05);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.6);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.65);
+      } catch (e) {}
+
+      triggerVibrate(150);
+    }
+
+    function triggerVibrate(ms) {
+      if (window.AndroidBridge && typeof window.AndroidBridge.vibrate === 'function') {
+        window.AndroidBridge.vibrate(ms);
+      } else if (navigator.vibrate) {
+        navigator.vibrate(ms);
+      }
+    }
+
+    /* =========================================================================
+       SCREEN WAKE LOCK & BRIGHTNESS CONTROL
+       ========================================================================= */
+    let wakeLockSentinel = null;
+    async function requestWakeLock() {
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLockSentinel = await navigator.wakeLock.request('screen');
+          wakeLockSentinel.addEventListener('release', () => {
+            if (state.wakeLockActive) requestWakeLock();
+          });
+        } catch (e) {}
+      }
+      if (window.AndroidBridge && typeof window.AndroidBridge.setKeepScreenOn === 'function') {
+        window.AndroidBridge.setKeepScreenOn(true);
+      }
+    }
+
+    function releaseWakeLock() {
+      if (wakeLockSentinel) {
+        wakeLockSentinel.release();
+        wakeLockSentinel = null;
+      }
+      if (window.AndroidBridge && typeof window.AndroidBridge.setKeepScreenOn === 'function') {
+        window.AndroidBridge.setKeepScreenOn(false);
+      }
+    }
+
+    function applyBrightness(val) {
+      state.brightness = val;
+      localStorage.setItem('clk_brightness', val);
+      sliderDimmer.value = val;
+      dimmerPctText.textContent = val + '%';
+
+      if (window.AndroidBridge && typeof window.AndroidBridge.setScreenBrightness === 'function') {
+        window.AndroidBridge.setScreenBrightness(val / 100.0);
+      }
+
+      const opacity = (100 - val) / 100 * 0.92;
+      dimOverlay.style.opacity = opacity;
+    }
+
+    /* =========================================================================
+       AUTO-HIDE INACTIVITY CONTROLS
+       ========================================================================= */
+    let idleTimer = null;
+    function resetIdleTimer() {
+      topBar.classList.remove('idle-hidden');
+      bottomBar.classList.remove('idle-hidden');
+      clearTimeout(idleTimer);
+
+      const isModalOpen = modalSettings.classList.contains('open') || modalStopwatch.classList.contains('open');
+      if (!isModalOpen) {
+        idleTimer = setTimeout(() => {
+          topBar.classList.add('idle-hidden');
+          bottomBar.classList.add('idle-hidden');
+        }, 3800);
+      }
+    }
+
+    ['touchstart', 'touchmove', 'mousemove', 'mousedown', 'keydown'].forEach(evt => {
+      window.addEventListener(evt, resetIdleTimer, { passive: true });
+    });
+
+    /* =========================================================================
+       ANTI-BURN-IN PIXEL SHIFT (OLED PROTECTION)
+       ========================================================================= */
+    let lastShiftMinute = -1;
+    function updateBurnInShift(currentMinute) {
+      if (!state.burnInProtection) {
+        mainWrapper.style.transform = 'translate(0px, 0px)';
+        return;
+      }
+      if (currentMinute !== lastShiftMinute) {
+        lastShiftMinute = currentMinute;
+        const shiftX = (Math.floor(Math.random() * 9) - 4);
+        const shiftY = (Math.floor(Math.random() * 9) - 4);
+        mainWrapper.style.transform = `translate(${shiftX}px, ${shiftY}px)`;
+      }
+    }
+
+    /* =========================================================================
+       CLOCK LOGIC
+       ========================================================================= */
+    let lastChimeHour = -1;
+
+    function getWeekNumber(d) {
+      const target = new Date(d.valueOf());
+      const dayNr = (d.getDay() + 6) % 7;
+      target.setDate(target.getDate() - dayNr + 3);
+      const firstThursday = target.valueOf();
+      target.setMonth(0, 1);
+      if (target.getDay() !== 4) {
+        target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
+      }
+      return 1 + Math.ceil((firstThursday - target) / 604800000);
+    }
+
+    function getDayOfYear(d) {
+      const start = new Date(d.getFullYear(), 0, 0);
+      const diff = d - start;
+      const oneDay = 1000 * 60 * 60 * 24;
+      return Math.floor(diff / oneDay);
+    }
+
+    function updateClock() {
+      const now = new Date();
+      let hours = now.getHours();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      const millis = now.getMilliseconds();
+
+      if (state.hourlyChime && minutes === 0 && seconds === 0 && lastChimeHour !== hours) {
+        lastChimeHour = hours;
+        playChime();
+      }
+
+      let ampmStr = '';
+      if (!state.is24h) {
+        ampmStr = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        if (hours === 0) hours = 12;
+      }
+
+      const hStr = String(hours).padStart(2, '0');
+      const mStr = String(minutes).padStart(2, '0');
+      const sStr = String(seconds).padStart(2, '0');
+
+      elHours.textContent = hStr;
+      elMinutes.textContent = mStr;
+      elSeconds.textContent = sStr;
+
+      if (!state.is24h) {
+        elAmPm.style.display = 'block';
+        elAmPm.textContent = ampmStr;
+        if (ampmStr === 'PM') {
+          elAmPm.classList.add('highlight');
+        } else {
+          elAmPm.classList.remove('highlight');
+        }
+      } else {
+        elAmPm.style.display = 'none';
+      }
+
+      if (state.blinkingColon) {
+        if (millis < 500) {
+          elColon1.classList.remove('blink');
+        } else {
+          elColon1.classList.add('blink');
+        }
+      } else {
+        elColon1.classList.remove('blink');
+      }
+
+      if (state.showSeconds) {
+        elSecContainer.style.display = 'flex';
+        elProgressWrap.style.display = 'block';
+        const progressPct = ((seconds + millis / 1000) / 60) * 100;
+        elProgressBar.style.width = progressPct.toFixed(1) + '%';
+      } else {
+        elSecContainer.style.display = 'none';
+        elProgressWrap.style.display = 'none';
+      }
+
+      const dateOptions = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      elDateText.textContent = now.toLocaleDateString(undefined, dateOptions).toUpperCase();
+
+      elWeekTag.textContent = 'WEEK ' + getWeekNumber(now);
+      elDayTag.textContent = 'DAY ' + getDayOfYear(now);
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      elTzTag.textContent = tz ? tz.split('/').pop().replace('_', ' ').toUpperCase() : 'LOCAL';
+
+      // Update Home Screen Widget Modal Previews if open
+      if (modalWidgets && modalWidgets.classList.contains('open')) {
+        if (widgetPrevHours1) widgetPrevHours1.textContent = hStr;
+        if (widgetPrevColon1) {
+          if (state.blinkingColon && millis >= 500) {
+            widgetPrevColon1.style.opacity = '0.15';
+          } else {
+            widgetPrevColon1.style.opacity = '1';
+          }
+        }
+        if (widgetPrevMinutes1) widgetPrevMinutes1.textContent = mStr;
+        if (widgetPrevSeconds1) widgetPrevSeconds1.textContent = sStr;
+        if (widgetPrevBar1) {
+          const progressPct = ((seconds + millis / 1000) / 60) * 100;
+          widgetPrevBar1.style.width = progressPct.toFixed(1) + '%';
+        }
+        if (widgetPrevDate1) widgetPrevDate1.textContent = elDateText.textContent;
+        if (widgetPrevWeek1) widgetPrevWeek1.textContent = elWeekTag.textContent;
+        if (widgetPrevDay1) widgetPrevDay1.textContent = elDayTag.textContent;
+        if (widgetPrevTz1) widgetPrevTz1.textContent = elTzTag.textContent;
+
+        if (widgetPrevSecWrap1) widgetPrevSecWrap1.style.display = state.showSeconds ? 'flex' : 'none';
+        if (widgetPrevProgressWrap1) widgetPrevProgressWrap1.style.display = state.showSeconds ? 'block' : 'none';
+
+        if (widgetPrevAmPm1) {
+          widgetPrevAmPm1.textContent = state.is24h ? '' : ampmStr;
+          widgetPrevAmPm1.style.display = state.is24h ? 'none' : 'inline-block';
+          if (ampmStr === 'PM') {
+            widgetPrevAmPm1.classList.add('highlight');
+          } else {
+            widgetPrevAmPm1.classList.remove('highlight');
+          }
+        }
+
+        if (widgetPrevTime2) widgetPrevTime2.textContent = `${hStr}:${mStr}`;
+        if (widgetPrevDate2) widgetPrevDate2.textContent = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+        if (widgetPrevMonth) widgetPrevMonth.textContent = now.toLocaleDateString(undefined, { month: 'short' }).toUpperCase();
+        if (widgetPrevDay) widgetPrevDay.textContent = String(now.getDate());
+        if (widgetPrevWeekday) widgetPrevWeekday.textContent = now.toLocaleDateString(undefined, { weekday: 'long' }).toUpperCase();
+      }
+
+      updateBurnInShift(minutes);
+
+      requestAnimationFrame(updateClock);
+    }
+
+    /* =========================================================================
+       CALENDAR LOGIC
+       ========================================================================= */
+    const MONTH_NAMES = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+
+    function renderCalendar() {
+      const today = new Date();
+      const currentYear = state.calYear;
+      const currentMonth = state.calMonth;
+
+      elCalTitle.textContent = `${MONTH_NAMES[currentMonth]} ${currentYear}`.toUpperCase();
+
+      const isViewingCurrent = (currentYear === today.getFullYear() && currentMonth === today.getMonth());
+      if (!isViewingCurrent) {
+        elCalTodayBtn.classList.add('visible');
+      } else {
+        elCalTodayBtn.classList.remove('visible');
+      }
+
+      elCalGrid.innerHTML = '';
+
+      const weekdaysSun = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+      const weekdaysMon = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+      const activeWeekdays = state.startMonday ? weekdaysMon : weekdaysSun;
+
+      activeWeekdays.forEach(wd => {
+        const hCell = document.createElement('div');
+        hCell.className = 'cal-weekday';
+        hCell.textContent = wd;
+        elCalGrid.appendChild(hCell);
+      });
+
+      const firstDayOfMonth = new Date(currentYear, currentMonth, 1).getDay();
+      let startingIndex = state.startMonday ? (firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1) : firstDayOfMonth;
+
+      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+      const daysInPrevMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+      for (let i = startingIndex - 1; i >= 0; i--) {
+        const dNum = daysInPrevMonth - i;
+        const cell = document.createElement('div');
+        cell.className = 'cal-day other-month';
+        cell.textContent = dNum;
+        cell.onclick = () => {
+          changeMonth(-1);
+        };
+        elCalGrid.appendChild(cell);
+      }
+
+      for (let d = 1; d <= daysInMonth; d++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-day';
+        cell.textContent = d;
+
+        const isToday = (d === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear());
+        if (isToday) {
+          cell.classList.add('today');
+        }
+
+        const dayOfWeek = new Date(currentYear, currentMonth, d).getDay();
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          cell.classList.add('weekend');
+        }
+
+        if (state.selectedDate && state.selectedDate.d === d && state.selectedDate.m === currentMonth && state.selectedDate.y === currentYear) {
+          cell.classList.add('selected');
+        }
+
+        cell.onclick = () => {
+          selectDate(d, currentMonth, currentYear);
+        };
+
+        elCalGrid.appendChild(cell);
+      }
+
+      const totalRendered = startingIndex + daysInMonth;
+      const nextSlots = (totalRendered > 35 ? 42 : 35) - totalRendered;
+      for (let n = 1; n <= nextSlots; n++) {
+        const cell = document.createElement('div');
+        cell.className = 'cal-day other-month';
+        cell.textContent = n;
+        cell.onclick = () => {
+          changeMonth(1);
+        };
+        elCalGrid.appendChild(cell);
+      }
+    }
+
+    function changeMonth(delta) {
+      state.calMonth += delta;
+      if (state.calMonth < 0) {
+        state.calMonth = 11;
+        state.calYear--;
+      } else if (state.calMonth > 11) {
+        state.calMonth = 0;
+        state.calYear++;
+      }
+      renderCalendar();
+      triggerVibrate(15);
+    }
+
+    function selectDate(d, m, y) {
+      state.selectedDate = { d, m, y };
+      renderCalendar();
+      triggerVibrate(20);
+
+      const target = new Date(y, m, d);
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      target.setHours(0,0,0,0);
+
+      const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
+      let diffStr = '';
+      if (diffDays === 0) diffStr = 'Today';
+      else if (diffDays === 1) diffStr = 'Tomorrow';
+      else if (diffDays === -1) diffStr = 'Yesterday';
+      else if (diffDays > 1) diffStr = `In ${diffDays} days`;
+      else diffStr = `${Math.abs(diffDays)} days ago`;
+
+      const options = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+      elCalInfo.innerHTML = `<span>${target.toLocaleDateString(undefined, options)}</span> • ${diffStr}`;
+    }
+
+    elCalPrev.onclick = () => changeMonth(-1);
+    elCalNext.onclick = () => changeMonth(1);
+    elCalTodayBtn.onclick = () => {
+      const now = new Date();
+      state.calYear = now.getFullYear();
+      state.calMonth = now.getMonth();
+      selectDate(now.getDate(), now.getMonth(), now.getFullYear());
+      renderCalendar();
+    };
+
+    /* =========================================================================
+       THEME & SETTINGS
+       ========================================================================= */
+    function syncNativeSettings() {
+      if (window.AndroidBridge && window.AndroidBridge.syncSettings) {
+        window.AndroidBridge.syncSettings(state.blinkingColon, state.showSeconds, state.is24h);
+      }
+    }
+
+    function applyTheme(name) {
+      if (!THEMES_LIST.includes(name)) name = 'cyan';
+      state.theme = name;
+      localStorage.setItem('clk_theme', name);
+      document.body.setAttribute('data-theme', name);
+      themeLabel.textContent = THEME_NAMES[name] || name;
+
+      document.querySelectorAll('.swatch').forEach(sw => {
+        if (sw.dataset.theme === name) {
+          sw.classList.add('selected');
+        } else {
+          sw.classList.remove('selected');
+        }
+      });
+
+      if (window.AndroidBridge && window.AndroidBridge.setTheme) {
+        try {
+          window.AndroidBridge.setTheme(name);
+        } catch (e) {}
+      }
+    }
+
+    function cycleTheme() {
+      const idx = THEMES_LIST.indexOf(state.theme);
+      const nextTheme = THEMES_LIST[(idx + 1) % THEMES_LIST.length];
+      applyTheme(nextTheme);
+      triggerVibrate(25);
+    }
+
+    btnThemeQuick.onclick = cycleTheme;
+
+    btnFormatToggle.onclick = () => {
+      state.is24h = !state.is24h;
+      localStorage.setItem('clk_24h', state.is24h);
+      formatLabel.textContent = state.is24h ? '24H' : '12H';
+      toggle24h.checked = state.is24h;
+      syncNativeSettings();
+      triggerVibrate(20);
+    };
+
+    btnDimmer.onclick = () => {
+      let nextBright = 100;
+      if (state.brightness > 75) nextBright = 70;
+      else if (state.brightness > 45) nextBright = 40;
+      else if (state.brightness > 20) nextBright = 15;
+      else nextBright = 100;
+      applyBrightness(nextBright);
+      triggerVibrate(25);
+    };
+
+    sliderDimmer.addEventListener('input', (e) => {
+      applyBrightness(parseInt(e.target.value, 10));
+    });
+
+    btnWakeLock.onclick = () => {
+      state.wakeLockActive = !state.wakeLockActive;
+      if (state.wakeLockActive) {
+        requestWakeLock();
+        btnWakeLock.classList.add('active');
+        wakeLockIcon.textContent = '🔆';
+      } else {
+        releaseWakeLock();
+        btnWakeLock.classList.remove('active');
+        wakeLockIcon.textContent = '💤';
+      }
+      triggerVibrate(20);
+    };
+
+    btnFullscreen.onclick = () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+      }
+      triggerVibrate(20);
+    };
+
+    btnSettings.onclick = () => {
+      modalSettings.classList.add('open');
+      triggerVibrate(20);
+    };
+    closeSettings.onclick = () => modalSettings.classList.remove('open');
+    modalSettings.onclick = (e) => {
+      if (e.target === modalSettings) modalSettings.classList.remove('open');
+    };
+
+    toggle24h.addEventListener('change', (e) => {
+      state.is24h = e.target.checked;
+      localStorage.setItem('clk_24h', state.is24h);
+      formatLabel.textContent = state.is24h ? '24H' : '12H';
+      syncNativeSettings();
+    });
+
+    toggleSeconds.addEventListener('change', (e) => {
+      state.showSeconds = e.target.checked;
+      localStorage.setItem('clk_sec', state.showSeconds);
+      syncNativeSettings();
+    });
+
+    toggleBlink.addEventListener('change', (e) => {
+      state.blinkingColon = e.target.checked;
+      localStorage.setItem('clk_blink', state.blinkingColon);
+      syncNativeSettings();
+    });
+
+    toggleMonday.addEventListener('change', (e) => {
+      state.startMonday = e.target.checked;
+      localStorage.setItem('clk_monday', state.startMonday);
+      renderCalendar();
+    });
+
+    toggleBurnin.addEventListener('change', (e) => {
+      state.burnInProtection = e.target.checked;
+      localStorage.setItem('clk_burnin', state.burnInProtection);
+      if (!state.burnInProtection) {
+        mainWrapper.style.transform = 'translate(0px, 0px)';
+      }
+    });
+
+    toggleChime.addEventListener('change', (e) => {
+      state.hourlyChime = e.target.checked;
+      localStorage.setItem('clk_chime', state.hourlyChime);
+      if (state.hourlyChime) playChime();
+    });
+
+    document.querySelectorAll('.swatch').forEach(sw => {
+      sw.onclick = () => {
+        applyTheme(sw.dataset.theme);
+        triggerVibrate(25);
+      };
+    });
+
+    /* Font switching */
+    function applyFont(font) {
+      if (!['mono', 'sans', 'condensed'].includes(font)) font = 'mono';
+      state.font = font;
+      localStorage.setItem('clk_font', font);
+      document.body.classList.remove('font-sans', 'font-condensed');
+      if (font === 'sans') {
+        document.body.classList.add('font-sans');
+      } else if (font === 'condensed') {
+        document.body.classList.add('font-condensed');
+      }
+      if (selectFont) selectFont.value = font;
+    }
+
+    if (selectFont) {
+      selectFont.addEventListener('change', (e) => {
+        applyFont(e.target.value);
+        triggerVibrate(20);
+      });
+    }
+
+    /* Desk Clock Tap HUD Toggle */
+    if (clockCard) {
+      clockCard.addEventListener('click', () => {
+        topBar.classList.toggle('idle-hidden');
+        bottomBar.classList.toggle('idle-hidden');
+        triggerVibrate(15);
+      });
+    }
+
+    /* Home Screen Widget Modal Handlers */
+    if (btnWidget) {
+      btnWidget.onclick = () => {
+        modalWidgets.classList.add('open');
+        triggerVibrate(20);
+      };
+    }
+    if (closeWidgets) {
+      closeWidgets.onclick = () => modalWidgets.classList.remove('open');
+    }
+    if (modalWidgets) {
+      modalWidgets.onclick = (e) => {
+        if (e.target === modalWidgets) modalWidgets.classList.remove('open');
+      };
+    }
+    if (btnOpenWidgetsFromSettings) {
+      btnOpenWidgetsFromSettings.onclick = () => {
+        modalSettings.classList.remove('open');
+        modalWidgets.classList.add('open');
+        triggerVibrate(20);
+      };
+    }
+
+    if (btnPinWidgetDigital) {
+      btnPinWidgetDigital.onclick = () => {
+        triggerVibrate(30);
+        if (window.AndroidBridge && typeof AndroidBridge.pinWidget === 'function') {
+          AndroidBridge.pinWidget('digital');
+        } else {
+          alert("To add widget: Long-press your phone's Home Screen, tap 'Widgets', and choose AMOLED Clock!");
+        }
+      };
+    }
+
+    if (btnPinWidgetCalendar) {
+      btnPinWidgetCalendar.onclick = () => {
+        triggerVibrate(30);
+        if (window.AndroidBridge && typeof AndroidBridge.pinWidget === 'function') {
+          AndroidBridge.pinWidget('calendar');
+        } else {
+          alert("To add widget: Long-press your phone's Home Screen, tap 'Widgets', and choose AMOLED Clock & Calendar!");
+        }
+      };
+    }
+
+    /* =========================================================================
+       STOPWATCH & COUNTDOWN TIMER MODAL
+       ========================================================================= */
+    let swRunning = false;
+    let swStartTime = 0;
+    let swElapsedTime = 0;
+    let swInterval = null;
+    const swDisplay = document.getElementById('sw-display');
+    const swStartBtn = document.getElementById('sw-start-btn');
+    const swResetBtn = document.getElementById('sw-reset-btn');
+
+    btnStopwatch.onclick = () => {
+      modalStopwatch.classList.add('open');
+      triggerVibrate(20);
+    };
+    closeStopwatch.onclick = () => modalStopwatch.classList.remove('open');
+    modalStopwatch.onclick = (e) => {
+      if (e.target === modalStopwatch) modalStopwatch.classList.remove('open');
+    };
+
+    function updateSw() {
+      const now = Date.now();
+      const diff = swElapsedTime + (swRunning ? now - swStartTime : 0);
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      const ms = Math.floor((diff % 1000) / 10);
+      swDisplay.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}.${String(ms).padStart(2, '0')}`;
+    }
+
+    swStartBtn.onclick = () => {
+      if (!swRunning) {
+        swRunning = true;
+        swStartTime = Date.now();
+        swInterval = setInterval(updateSw, 30);
+        swStartBtn.textContent = 'Pause';
+        swStartBtn.style.background = '#ff3b30';
+      } else {
+        swRunning = false;
+        swElapsedTime += Date.now() - swStartTime;
+        clearInterval(swInterval);
+        swStartBtn.textContent = 'Resume';
+        swStartBtn.style.background = 'var(--accent)';
+      }
+      triggerVibrate(20);
+    };
+
+    swResetBtn.onclick = () => {
+      swRunning = false;
+      clearInterval(swInterval);
+      swStartTime = 0;
+      swElapsedTime = 0;
+      swDisplay.textContent = '00:00.00';
+      swStartBtn.textContent = 'Start';
+      swStartBtn.style.background = 'var(--accent)';
+      triggerVibrate(20);
+    };
+
+    /* Countdown Timer Mode */
+    let cdDuration = 300;
+    let cdRemaining = 300;
+    let cdRunning = false;
+    let cdInterval = null;
+
+    if (tabSwBtn && tabTimerBtn) {
+      tabSwBtn.onclick = () => {
+        tabSwBtn.classList.add('active');
+        tabSwBtn.style.background = 'rgba(255,255,255,0.1)';
+        tabTimerBtn.classList.remove('active');
+        tabTimerBtn.style.background = 'transparent';
+        if (swView) swView.style.display = 'block';
+        if (timerView) timerView.style.display = 'none';
+        triggerVibrate(15);
+      };
+
+      tabTimerBtn.onclick = () => {
+        tabTimerBtn.classList.add('active');
+        tabTimerBtn.style.background = 'rgba(255,255,255,0.1)';
+        tabSwBtn.classList.remove('active');
+        tabSwBtn.style.background = 'transparent';
+        if (swView) swView.style.display = 'none';
+        if (timerView) timerView.style.display = 'block';
+        triggerVibrate(15);
+      };
+    }
+
+    function updateCdDisplay() {
+      if (!cdDisplay) return;
+      const m = Math.floor(cdRemaining / 60);
+      const s = cdRemaining % 60;
+      cdDisplay.textContent = `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+    }
+
+    document.querySelectorAll('.cd-pill').forEach(pill => {
+      pill.onclick = () => {
+        document.querySelectorAll('.cd-pill').forEach(p => {
+          p.classList.remove('active');
+          p.style.color = '';
+        });
+        pill.classList.add('active');
+        pill.style.color = 'var(--accent)';
+        cdDuration = parseInt(pill.dataset.seconds, 10);
+        cdRemaining = cdDuration;
+        clearInterval(cdInterval);
+        cdRunning = false;
+        if (cdStartBtn) {
+          cdStartBtn.textContent = 'Start';
+          cdStartBtn.style.background = 'var(--accent)';
+        }
+        updateCdDisplay();
+        triggerVibrate(20);
+      };
+    });
+
+    if (cdStartBtn) {
+      cdStartBtn.onclick = () => {
+        if (!cdRunning) {
+          if (cdRemaining <= 0) cdRemaining = cdDuration;
+          cdRunning = true;
+          cdStartBtn.textContent = 'Pause';
+          cdStartBtn.style.background = '#ff3b30';
+          cdInterval = setInterval(() => {
+            if (cdRemaining > 0) {
+              cdRemaining--;
+              updateCdDisplay();
+              if (cdRemaining === 0) {
+                clearInterval(cdInterval);
+                cdRunning = false;
+                cdStartBtn.textContent = 'Start';
+                cdStartBtn.style.background = 'var(--accent)';
+                playChime();
+                triggerVibrate(400);
+              }
+            }
+          }, 1000);
+        } else {
+          cdRunning = false;
+          clearInterval(cdInterval);
+          cdStartBtn.textContent = 'Resume';
+          cdStartBtn.style.background = 'var(--accent)';
+        }
+        triggerVibrate(20);
+      };
+    }
+
+    if (cdResetBtn) {
+      cdResetBtn.onclick = () => {
+        cdRunning = false;
+        clearInterval(cdInterval);
+        cdRemaining = cdDuration;
+        updateCdDisplay();
+        if (cdStartBtn) {
+          cdStartBtn.textContent = 'Start';
+          cdStartBtn.style.background = 'var(--accent)';
+        }
+        triggerVibrate(20);
+      };
+    }
+
+    /* =========================================================================
+       INITIALIZATION
+       ========================================================================= */
+    function init() {
+      applyTheme(state.theme);
+      applyFont(state.font);
+      applyBrightness(state.brightness);
+
+      toggle24h.checked = state.is24h;
+      formatLabel.textContent = state.is24h ? '24H' : '12H';
+      toggleSeconds.checked = state.showSeconds;
+      toggleBlink.checked = state.blinkingColon;
+      toggleMonday.checked = state.startMonday;
+      toggleBurnin.checked = state.burnInProtection;
+      toggleChime.checked = state.hourlyChime;
+      syncNativeSettings();
+
+      btnWakeLock.classList.add('active');
+      requestWakeLock();
+
+      renderCalendar();
+      updateClock();
+      resetIdleTimer();
+    }
+
+    window.addEventListener('DOMContentLoaded', init);
+  </script>
+</body>
+</html>

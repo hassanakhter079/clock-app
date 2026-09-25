@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Background track: subtle translucent track matching the app -->
+    <item android:id="@android:id/background">
+        <shape android:shape="rectangle">
+            <corners android:radius="2dp" />
+            <solid android:color="#14ffffff" />
+        </shape>
+    </item>
+    <!-- Progress fill: neon cyan with rounded caps -->
+    <item android:id="@android:id/progress">
+        <clip>
+            <shape android:shape="rectangle">
+                <corners android:radius="2dp" />
+                <solid android:color="#00f0ff" />
+            </shape>
+        </clip>
+    </item>
+</layer-list>

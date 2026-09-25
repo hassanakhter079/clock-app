@@ -1,0 +1,99 @@
+// ============================================================
+// AMOLED Clock — Gradle Build Script
+// Target: Samsung Galaxy Tab S8+ · Android 16 (API 36)
+// ============================================================
+
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.amoledclock.app'
+
+    // Android 16 / API 36
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "com.amoledclock.app"
+        minSdk        26       // Android 8.0 Oreo
+        targetSdk     36       // Android 16
+        versionCode   1
+        versionName   "1.0.0"
+
+        // Tab S8+ is x86_64 (emulator) and arm64-v8a (device)
+        ndk {
+            abiFilters "arm64-v8a", "armeabi-v7a", "x86_64"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled   true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+
+            // Sign with your keystore:
+            // signingConfig signingConfigs.release
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            debuggable true
+            // Enable WebView remote debugging in debug builds
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    // Enable WebView debugging in debug mode
+    buildFeatures {
+        buildConfig true
+    }
+
+    // Tab S8+ resolution: 2800 × 1752 @ 277 ppi
+    // Keep resources for all densities (xxhdpi, xxxhdpi)
+    packagingOptions {
+        resources {
+            excludes += ['META-INF/LICENSE', 'META-INF/NOTICE']
+        }
+    }
+
+    // Asset directories — place index.html here
+    sourceSets {
+        main {
+            assets.srcDirs = ['src/main/assets']
+            java.srcDirs   = ['src/main/java']
+        }
+    }
+
+    // Lint — suppress WebView warnings for this use-case
+    lint {
+        disable 'SetJavaScriptEnabled'
+        abortOnError false
+    }
+}
+
+dependencies {
+    // No external dependencies needed — pure WebView app
+    // Optional: LeakCanary for debug memory profiling
+    // debugImplementation 'com.squareup.leakcanary:leakcanary-android:2.12'
+}
+
+// ============================================================
+// ASSET SETUP INSTRUCTIONS
+// ============================================================
+// Folder structure inside app/src/main/assets/:
+//
+//   assets/
+//   ├── index.html              ← The clock HTML file
+//   └── fonts/
+//       ├── JetBrainsMono-Bold.ttf
+//       ├── JetBrainsMono-Regular.ttf
+//       ├── PlusJakartaSans-SemiBold.woff2
+//       └── PlusJakartaSans-Regular.woff2
+//
+// Download JetBrains Mono: https://www.jetbrains.com/lp/mono/
+// Download Plus Jakarta Sans: https://fonts.google.com/specimen/Plus+Jakarta+Sans
+// ============================================================
