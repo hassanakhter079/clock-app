@@ -1,8 +1,15 @@
 # AMOLED Clock — APK Compilation Guide
 
-**Target device:** Samsung Galaxy Tab S8+ · Android 16 (API 36)  
-**Screen:** 2800 × 1752 · 277 ppi AMOLED  
-**Architecture:** arm64-v8a  
+**Compatibility:** Any Android Device (Phones, Tablets, Foldables) · Android 8.0+ (API 26–36+)  
+**Display:** Fully responsive for all screen sizes & resolutions (optimized for AMOLED / OLED)  
+**Architecture:** Universal (arm64-v8a, armeabi-v7a, x86, x86_64)  
+
+---
+
+## 📲 Download APK
+
+Download the latest pre-compiled, signed APK directly from the [Releases](https://github.com/hassanakhter079/clock-app/releases/latest) page:
+- 📥 **[Download Clock.apk](https://github.com/hassanakhter079/clock-app/releases/latest/download/Clock.apk)**
 
 ---
 
@@ -78,15 +85,15 @@ The APK will appear at:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-### 6. Install on Tab S8+
+### 6. Install on Android Device
 
 **Via ADB:**
 ```bash
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-**Via USB file transfer:**  
-Copy the APK to the tablet, open it in Files, and allow "Install unknown apps."
+**Via Direct APK / USB transfer:**  
+Copy the APK to your phone or tablet, tap the file in your file manager, and allow "Install unknown apps."
 
 ### 7. Release APK (signed)
 
@@ -112,7 +119,7 @@ Copy the APK to the tablet, open it in Files, and allow "Install unknown apps."
 | **Hourly chime** | Web Audio API sine-wave synth + vibration |
 | **Screen wake lock** | Web API + native `FLAG_KEEP_SCREEN_ON` |
 | **Night dimmer** | Overlay opacity + native window brightness |
-| **Landscape layout** | Clock + calendar side-by-side on Tab S8+ |
+| **Landscape layout** | Clock + calendar side-by-side on wide screens & tablets |
 | **Edge-to-edge** | Android 11+ `setDecorFitsSystemWindows(false)` |
 | **Idle auto-hide** | Top/bottom UI fades after 4 seconds |
 
